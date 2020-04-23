@@ -1,5 +1,4 @@
 # Binf
-=================
 Bioinformation learning  
 
 1.ampliconExtracter.py
