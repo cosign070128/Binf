@@ -20,7 +20,7 @@ if len(sys.argv) != 6:  ##positional arguments not equal to 6, print usage infor
     print("3: column containing left primers; 5: column containing right primers; 7: column containing templates")
     sys.exit()
 
-if sys.argv[1].startswith('--'):
+elif sys.argv[1].startswith('--'):
     option = sys.argv[1][2:]
     if option == 'version':  ##positional arguments is --vesion, print version information and exit
         print("Version 1.01")
