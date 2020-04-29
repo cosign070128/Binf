@@ -5,8 +5,8 @@
 #Usage: python ampliconExtracter.py [--help] [--vesion] [input_file] [output_file] [Column_of_left_primer] [Column_of_right_primer] [Column_of_template]
 #Example: python ampliconExtracter.py A_input B_output 3 5 7.
 #3: column containing left primers; 5: column containing right primers; 7: column containing templates.
-#Version: 1.01
-#Author: Zhangdijun  Date: 2020.4.22
+#Version: 1.02
+#Author: Zhangdijun  Date: 2020.4.29
 
 import sys  ##import system package, call positional arguments function
 from Bio.Seq import Seq  ##import biopython package, call reverse complement function
