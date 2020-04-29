@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 #This program is for convert the fasta file to primer3 input file.
-#Usage: python seqs2primer3input.py [--help] [--vesion] [input_file] [output_file] [template_new_ids]
+#Usage: python seqs2primer3input.py [input_file] [output_file] [template_new_ids]
 #Example: python ampliconExtracter.py A_input B_output A.
 #A_input file must in fasta format. B_output file is the primer3 input file, A is the new id of templates, in output file it will be A_1..A_2.....A_n
 #Version: 1.0
