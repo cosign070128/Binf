@@ -12,10 +12,10 @@ import sys
 
 if len(sys.argv) != 4:
     print("\033[0;31;40mParameter error!!!!\033[0m")
-    print("Usage: python ampliconExtracter.py A_input B_output A")
+    print("Usage: python seqs2primer3input.py A_input B_output C")
     print("Author: Zhangdijun  Date: 2020.4.29")
-    print("Example: python ampliconExtracter.py A_input B_output A")
-    print("A_input file must in fasta format. B_output file is the primer3 input file, A_ is the new id of templates, in output file it will be A_1..A_2.....A_n")
+    print("Example: python seqs2primer3input.py A_input B_output C")
+    print("A_input file must in fasta format. B_output file is the primer3 input file, C is the new id of templates, in output file it will be C_1..C_2.....C_n")
     sys.exit()
 
 else:
