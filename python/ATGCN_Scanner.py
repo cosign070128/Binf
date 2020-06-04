@@ -4,7 +4,6 @@
 
 import sys
 from Bio import SeqIO
-from numpy import *
 
 if len(sys.argv) != 3:  ##参数数量不等于3的情况下，提示使用信息
     print("脚本用法:python ATGCN_Scanner.py sequences.fasta output_file")
@@ -32,14 +31,14 @@ if len(sys.argv) == 3:
 
         number_of_base_not_ATGCN = len(str(sequence_record.seq)) - A_count - T_count - G_count - C_count - N_count
 
-        if N_Percentage < 0.01:
+        if N_Percentage < 0.01: #高覆盖度序列
             base_count.write(str(sequence_record.id) + "\t" + str(len(str(sequence_record.seq))) + "\t" +
-                             str(round(N_Percentage, 3)) + "\t" + "HC" + "\t" + str(number_of_base_not_ATGCN) + "\n")
-        elif N_Percentage < 0.05:
+                             str(round(N_Percentage, 3)) + "\t" + "H-C" + "\t" + str(number_of_base_not_ATGCN) + "\n")
+        elif N_Percentage < 0.05: #中覆盖度序列
             base_count.write(str(sequence_record.id) + "\t" + str(len(str(sequence_record.seq))) + "\t" +
-                             str(round(N_Percentage, 3)) + "\t" + "MC" + "\t" + str(number_of_base_not_ATGCN) + "\n")
-        else:
+                             str(round(N_Percentage, 3)) + "\t" + "M-C" + "\t" + str(number_of_base_not_ATGCN) + "\n")
+        else: #低覆盖度序列
             base_count.write(str(sequence_record.id) + "\t" + str(len(str(sequence_record.seq))) + "\t" +
-                             str(round(N_Percentage, 3)) + "\t" + "LC" + "\t" + str(number_of_base_not_ATGCN) + "\n")
+                             str(round(N_Percentage, 3)) + "\t" + "L-C" + "\t" + str(number_of_base_not_ATGCN) + "\n")
 
     base_count.close()
