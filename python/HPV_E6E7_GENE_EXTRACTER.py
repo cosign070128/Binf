@@ -42,7 +42,7 @@ with open(hpv_CDS_seqs, "r") as hpv_CDS_seqs_file:
         if "=E6" in line or " E6" in line or "E6]" in line or "E6 " in line:
             try:
                 if isinstance(int(line.split('location=')[1].split('.')[0]), int) == True:  #整数型判断
-                    E6_seqs_ID.append(line.split(' ')[0].split('|')[1].split('_')[0])  #ID提取
+                    E6_seqs_ID.append(line.split(' ')[0].split('|')[1].split('_cds_')[0])  #ID提取
                     E6_seqs_start.append(line.split('location=')[1].split('.')[0])  #起始位置提取
             except:  #出现异常跳过，继续循环
                 pass
@@ -50,7 +50,7 @@ with open(hpv_CDS_seqs, "r") as hpv_CDS_seqs_file:
         if "=E7" in line or " E7" in line or "E7]" in line or "E7 " in line:
             try:
                 if isinstance(int(line.split('location=')[1].split('.')[2].split(']')[0]), int) == True:  #整数型判断
-                    E7_seqs_ID.append(line.split(' ')[0].split('|')[1].split('_')[0])  #ID提取
+                    E7_seqs_ID.append(line.split(' ')[0].split('|')[1].split('_cds_')[0])  #ID提取
                     E7_seqs_end.append(line.split('location=')[1].split('.')[2].split(']')[0])  #终止位置提取
             except:  #出现异常跳过，继续循环
                 pass
