@@ -35,6 +35,6 @@ for seq_record in SeqIO.parse(GISAID_download_file, "fasta"):
 
     seq_record.id = seq_record_new_id
     file_after_renamed_write.write(">" + seq_record.id + " " + seq_record.description + "\n")
-    file_after_renamed_write.write(str(seq_record.seq) + "\n")
+    file_after_renamed_write.write(str(seq_record.seq).upper() + "\n")
 
 file_after_renamed_write.close()
