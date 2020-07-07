@@ -64,7 +64,7 @@ for sequence_record in SeqIO.parse(sequences_input, "fasta"):
         N_location_list_minus = []
         for i in range(1, int(len(N_location_list))):
             N_location_list_minus.append(N_location_list[i] - N_location_list[i-1])
-        max_time = 0
+        max_time = 1
         cur_time = 1
         pre_element = None
         for j in N_location_list_minus:
@@ -73,7 +73,7 @@ for sequence_record in SeqIO.parse(sequences_input, "fasta"):
                 max_time = max(cur_time, max_time)
             else:
                 pre_element = j
-                cut_time = j
+                cur_time = j
 
         if N_percentage < 0.01:
             result_output.write(str(sequence_record.id) + "\t" + str(len(str(sequence_record.seq))) + "\t" +
@@ -84,11 +84,11 @@ for sequence_record in SeqIO.parse(sequences_input, "fasta"):
             result_output.write(str(sequence_record.id) + "\t" + str(len(str(sequence_record.seq))) + "\t" +
                                 str(GC_percentage) + "\t" + str(No_ATGCN_count) + "\t" +
                                 str(str(sequence_record.seq.upper()).count("N")) + "\t" + "M-C" +
-                                "\t" + str(max_time) + "\t" + str(round(max_time / int(len(N_location_list)), 2)) + "\n")
+                                "\t" + str(max_time + 1) + "\t" + str(round(max_time / int(len(N_location_list)), 2)) + "\n")
         else:
             result_output.write(str(sequence_record.id) + "\t" + str(len(str(sequence_record.seq))) + "\t" +
                                 str(GC_percentage) + "\t" + str(No_ATGCN_count) + "\t" +
                                 str(str(sequence_record.seq.upper()).count("N")) + "\t" + "L-C" +
-                                "\t" + str(max_time) + "\t" + str(round(max_time / int(len(N_location_list)), 2)) + "\n")
+                                "\t" + str(max_time + 1) + "\t" + str(round(max_time / int(len(N_location_list)), 2)) + "\n")
 
 result_output.close()
