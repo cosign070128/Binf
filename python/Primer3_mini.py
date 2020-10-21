@@ -76,7 +76,7 @@ def pragmenter(reference_sequence_selected):
 
     sequence_ID = str(reference_sequence_selected['sequence_ID'])  # 后一个sequence_ID为参考序列选择字典返回值中的键
     sequence = str(reference_sequence_selected['sequence'])  #后一个sequence为参考序列选择字典返回值中的键
-    sequence_reverse_complement_ID = str(sequence_ID + "_RC_")
+    sequence_reverse_complement_ID = str(sequence_ID + "_RC")
     sequence_reverse_complement = str(Seq(sequence, IUPAC.ambiguous_dna).reverse_complement())
 
     sequence_pragmenters_result = pragmenter_inner(sequence_ID, sequence)
@@ -84,176 +84,165 @@ def pragmenter(reference_sequence_selected):
                                                                       sequence_reverse_complement)
 
     pragmenters_result = [sequence_pragmenters_result, sequence_reverse_complement_pragmenters_result]
-    #pragmenters_result索引方式:
-    #pragment_result[0][0][i] = sequence_pragments_ID_i;
-    #pragment_result[0][1][i] = sequence_pragmenters_i;
-    #pragment_result[1][0][i] = sequence_reverse_complement_pragmenters_ID_i;
-    #pragment_result[1][1][i] = sequence_reverse_complement_pragmenters_i;
-
+    """
+    pragmenters_result索引方式:
+    pragment_result[0][0][i] = sequence_pragments_ID_i;
+    pragment_result[0][1][i] = sequence_pragmenters_i;
+    pragment_result[1][0][i] = sequence_reverse_complement_pragmenters_ID_i;
+    pragment_result[1][1][i] = sequence_reverse_complement_pragmenters_i;
+    """
     return pragmenters_result
 
-def pragmenters_Tm_calculation(pragmenters, min_Tm = 59, max_Tm = 61):
+def pragmenters_Tm_calculation(pragmenters_result, min_Tm = 59, max_Tm = 61):
     """此函数用于对切割后的类引物进行Tm值计算，通过碱基的删减，输出所有满足和不满足预设Tm值的类引物"""
-    sequence_pragmenters_id = pragmenters[0]
-    sequence_pragmenters = pragmenters[1]
-    sequence_RC_pragments_id = pragmenters[2]
-    sequence_RC_pragments = pragmenters[3]
+    def pragmenters_Tm_calculation_inner(pragmenters_inner_ID, pragmenters, min_Tm_inner = 59, max_Tm_inner = 61):
+        sequence_pragmenters_Tm_satisfied_ID = []
+        sequence_pragmenters_Tm_satisfied = []
+        sequence_pragmenters_Tm_not_satisfied_ID = []
+        sequence_pragmenters_Tm_not_satisfied = []
 
-    # 以下为正向类引物Tm值计算
-    sequence_pragmenters_id_satisfied = []  # 列表用于收录Tm值满足最小Tm值和最大Tm值类引物的ID
-    sequence_pragmenters_Tm_satisfied = []  # 列表用于收录Tm值满足最小Tm值和最大Tm值类引物的序列
-    sequence_pragmenters_id_not_satisfied = []  #列 表用于收录Tm值不满足最小Tm值和最大Tm值类引物的ID
-    sequence_pragmenters_Tm_not_satisfied = []  # 列表用于收录Tm值不满足最小Tm值和最大Tm值类引物的序列
+        for ID, pragmenter in zip(pragmenters_inner_ID, pragmenters):
+            for split in range(9):
+            # 从30bp长度切到20bp长度，原因在于，如果序列大于30bp才能够达到预设最大Tm,表明序列中含有大量的AT;
+            # 如果序列小于20bp就能够达到预设最小Tm,表明序列中含有大量的GC;以上两种情况均不满足引物中ATGC尽可能均匀分布的需求。
+                pragmenter_Tm = primer3.calcTm(str(pragmenter[split:]), mv_conc=50, dv_conc=3, dna_conc=200)
+                if min_Tm_inner <= pragmenter_Tm <= max_Tm_inner:
+                    sequence_pragmenters_Tm_satisfied_ID.append(str(ID) + "_" + str(30 - split) + "bp" +
+                                                                "@" + str(round(pragmenter_Tm, 2)))
+                    sequence_pragmenters_Tm_satisfied.append(str(pragmenter[split:]))
+                else:
+                    sequence_pragmenters_Tm_not_satisfied_ID.append(str(ID) + "_" + str(30 - split) + "bp" +
+                                                                    "@" + str(round(pragmenter_Tm, 2)))
+                    sequence_pragmenters_Tm_not_satisfied.append(str(pragmenter[split:]))
 
-    for id, pragmenter in zip(sequence_pragmenters_id, sequence_pragmenters):
-        for split in range(9):
-            pragmenter_Tm = primer3.calcTm(str(pragmenter[split:]), mv_conc=50, dv_conc=3, dna_conc=200)
-            if min_Tm <= pragmenter_Tm <= max_Tm:
-                sequence_pragmenters_id_satisfied.append(str(id) + "_" + str(split) + "@" +
-                                                         str(round(pragmenter_Tm, 2)))
-                sequence_pragmenters_Tm_satisfied.append(pragmenter[split:])
-            else:
-                sequence_pragmenters_id_not_satisfied.append(str(id) + "_" + str(split) + "@" +
-                                                             str(round(pragmenter_Tm, 2)))
-                sequence_pragmenters_Tm_not_satisfied.append(pragmenter[split:])
+        pragmenters_Tm_calculation_inner_result = [sequence_pragmenters_Tm_satisfied_ID,
+                                                   sequence_pragmenters_Tm_satisfied,
+                                                   sequence_pragmenters_Tm_not_satisfied_ID,
+                                                   sequence_pragmenters_Tm_not_satisfied]
 
-    # 以下为反向类引物Tm值计算
-    sequence_RC_pragmenters_id_satisfied = []  # 列表用于收录Tm值满足最小Tm值和最大Tm值类引物的ID
-    sequence_RC_pragmenters_Tm_satisfied = []  # 列表用于收录Tm值满足最小Tm值和最大Tm值类引物的序列
-    sequence_RC_pragmenters_id_not_satisfied = []  # 列表用于收录Tm值不满足最小Tm值和最大Tm值类引物的ID
-    sequence_RC_pragmenters_Tm_not_satisfied = []  # 列表用于收录Tm值不满足最小Tm值和最大Tm值类引物的序列
+        return pragmenters_Tm_calculation_inner_result
 
-    for RC_id, RC_pragmenter in zip(sequence_RC_pragments_id, sequence_RC_pragments):
-        for RC_split in range(9):
-            RC_pragmenter_Tm = primer3.calcTm(str(RC_pragmenter[RC_split:]), mv_conc=50, dv_conc=3, dna_conc=200)
-            if min_Tm <= RC_pragmenter_Tm <= max_Tm:
-                sequence_RC_pragmenters_id_satisfied.append(str(RC_id) + "_" + str(RC_split) + "@" +
-                                                            str(round(RC_pragmenter_Tm, 2)))
-                sequence_RC_pragmenters_Tm_satisfied.append(RC_pragmenter[RC_split:])
-            else:
-                sequence_RC_pragmenters_id_not_satisfied.append(str(RC_id) + "_" + str(RC_split) + "@" +
-                                                                str(round(RC_pragmenter_Tm, 2)))
-                sequence_RC_pragmenters_Tm_not_satisfied.append(RC_pragmenter[RC_split:])
+    sequence_pragments_ID = pragmenters_result[0][0]
+    sequence_pragments = pragmenters_result[0][1]
 
-    pragmenters_Tm_calculation_result = [sequence_pragmenters_id_satisfied,
-                                         sequence_pragmenters_Tm_satisfied,
-                                         sequence_RC_pragmenters_id_satisfied,
-                                         sequence_RC_pragmenters_Tm_satisfied,
-                                         sequence_pragmenters_id_not_satisfied,
-                                         sequence_pragmenters_Tm_not_satisfied,
-                                         sequence_RC_pragmenters_id_not_satisfied,
-                                         sequence_RC_pragmenters_Tm_not_satisfied]
+    sequence_pragmenters_Tm_calculation = \
+        pragmenters_Tm_calculation_inner(sequence_pragments_ID,
+                                         sequence_pragments,
+                                         min_Tm, max_Tm)
+
+    sequence_reverse_complement_pragmenters_ID = pragmenters_result[1][0]
+    sequence_reverse_complement_pragmenters = pragmenters_result[1][1]
+
+    sequence_reverse_complement_pragmenters_Tm_calculation = \
+        pragmenters_Tm_calculation_inner(sequence_reverse_complement_pragmenters_ID,
+                                         sequence_reverse_complement_pragmenters,
+                                         min_Tm, max_Tm)
+
+    pragmenters_Tm_calculation_result = [sequence_pragmenters_Tm_calculation,
+                                         sequence_reverse_complement_pragmenters_Tm_calculation]
+    """
+    pragmenters_Tm_calculation_result索引方式：
+    pragmenters_Tm_calculation[0][0][i] = sequence_pragmenters_Tm_satisfied_ID_i
+    pragmenters_Tm_calculation[0][1][i] = sequence_pragmenters_Tm_satisfied_i
+    pragmenters_Tm_calculation[0][2][i] = sequence_pragmenters_Tm_not_satisfied_ID_i
+    pragmenters_Tm_calculation[0][3][i] = sequence_pragmenters_Tm_not_satisfied_i
+    pragmenters_Tm_calculation[1][0][i] = sequence_reverse_complement_pragmenters_Tm_satisfied_ID_i
+    pragmenters_Tm_calculation[1][1][i] = sequence_reverse_complement_pragmenters_Tm_satisfied_i
+    pragmenters_Tm_calculation[1][2][i] = sequence_reverse_complement_pragmenters_Tm_not_satisfied_ID_i
+    pragmenters_Tm_calculation[1][3][i] = sequence_reverse_complement_pragmenters_Tm_not_satisfied_i
+    """
 
     return pragmenters_Tm_calculation_result
 
 def primer_last_5_base_calculation(pragmenters_Tm_calculation_result):
     """此函数用于检查引物3端最后5个碱基的组成情况，一般情况下，最后5个碱基允许出现的GC碱基个数应小于等于3个且大于等于1个，若出现过多GC碱
     基，会导致3端引物结合能力过强，错配概率大幅度增加，若没有GC碱基，则会导致引物3端结合能力过低，影响引导效率，一般而言，引物设计应追求碱
-    基的平均分布，尽可能不要出现GC/AT碱基连续出现的情况。"""
-    primer_id = pragmenters_Tm_calculation_result[0]
-    primer = pragmenters_Tm_calculation_result[1]
-    primer_RC_id = pragmenters_Tm_calculation_result[2]
-    primer_RC = pragmenters_Tm_calculation_result[3]
+    基的平均分布，尽可能不要出现GC/AT碱基连续出现的情况。至此筛选步骤，类引物已转化为正常引物。"""
+    def primer_last_5_base_calculation_inner(primer_ID_inner, primers_inner):
+        primer_last_5_base_GC_count_satisfied_ID = []
+        primer_last_5_base_GC_count_satisfied = []
+        primer_last_5_base_GC_count_not_satisfied_ID = []
+        primer_last_5_base_GC_count_not_satisfied = []
 
-    # 以下为正向引物3端5个碱基GC含量判断
-    primer_id_last_5_base_GC_count_satisfied = []  # 列表用于收录3端5个碱基GC含量满足要求的引物的ID
-    primer_last_5_base_GC_count_satisfied = []  # 列表用于收录3端5个碱基GC含量满足要求的引物的序列
-    primer_id_last_5_base_GC_count_not_satisfied = []  # 列表用于收录3端5个碱基GC含量不满足要求的引物的ID
-    primer_last_5_base_GC_count_not_satisfied = []  # 列表用于收录3端5个碱基GC含量不满足要求的引物的序列
+        for ID, primer in zip(primer_ID_inner, primers_inner):
+            primer_last_5_base = str(primer[-5:])
+            GC_count = primer_last_5_base.count("G") + primer_last_5_base.count("C")
+            if 1 <= GC_count <= 3:
+                primer_last_5_base_GC_count_satisfied_ID.append(ID)
+                primer_last_5_base_GC_count_satisfied.append(primer)
+            else:
+                primer_last_5_base_GC_count_not_satisfied_ID.append(str(ID) + "@GC_" + str(GC_count))
+                primer_last_5_base_GC_count_not_satisfied.append(primer)
 
-    for id, primer_seq in zip(primer_id, primer):
-        primer_last_5_base = str(primer_seq[-5:])
-        GC_count = primer_last_5_base.count("G") + primer_last_5_base.count("C")
-        if 1 <= GC_count <= 3:
-            primer_id_last_5_base_GC_count_satisfied.append(id)
-            primer_last_5_base_GC_count_satisfied.append(primer_seq)
-        else:
-            primer_id_last_5_base_GC_count_not_satisfied.append(id)
-            primer_last_5_base_GC_count_not_satisfied.append(primer_seq)
+        primer_last_5_base_calculation_inner_result = [primer_last_5_base_GC_count_satisfied_ID,
+                                                       primer_last_5_base_GC_count_satisfied,
+                                                       primer_last_5_base_GC_count_not_satisfied_ID,
+                                                       primer_last_5_base_GC_count_not_satisfied]
 
-    # 以下为反向引物3端5个碱基GC含量判断
-    primer_RC_id_last_5_base_GC_count_satisfied = []  # 列表用于收录3端5个碱基GC含量满足要求的引物的ID
-    primer_RC_last_5_base_GC_count_satisfied = []  # 列表用于收录3端5个碱基GC含量满足要求的引物的序列
-    primer_RC_id_last_5_base_GC_count_not_satisfied = []  # 列表用于收录3端5个碱基GC含量不满足要求的引物的ID
-    primer_RC_last_5_base_GC_count_not_satisfied = []  # 列表用于收录3端5个碱基GC含量不满足要求的引物的序列
+        return primer_last_5_base_calculation_inner_result
 
-    for RC_id, primer_RC_seq in zip(primer_RC_id, primer_RC):
-        primer_RC_last_5_base = str(primer_RC_seq[-5:])
-        GC_RC_count = primer_RC_last_5_base.count("G") + primer_RC_last_5_base.count("C")
-        if 1 <= GC_RC_count <= 3:
-            primer_RC_id_last_5_base_GC_count_satisfied.append(RC_id)
-            primer_RC_last_5_base_GC_count_satisfied.append(primer_RC_seq)
-        else:
-            primer_RC_id_last_5_base_GC_count_not_satisfied.append(RC_id)
-            primer_RC_last_5_base_GC_count_not_satisfied.append(primer_RC_seq)
+    primer_ID = pragmenters_Tm_calculation_result[0][0]
+    primer = pragmenters_Tm_calculation_result[0][1]
 
-    primer_last_5_base_calculation_result = [primer_id_last_5_base_GC_count_satisfied,
-                                             primer_last_5_base_GC_count_satisfied,
-                                             primer_RC_id_last_5_base_GC_count_satisfied,
-                                             primer_RC_last_5_base_GC_count_satisfied,
-                                             primer_id_last_5_base_GC_count_not_satisfied,
-                                             primer_last_5_base_GC_count_not_satisfied,
-                                             primer_RC_id_last_5_base_GC_count_not_satisfied,
-                                             primer_RC_last_5_base_GC_count_not_satisfied]
+    primer_last_5_base_calculation_inner_result = \
+        primer_last_5_base_calculation_inner(primer_ID, primer)
+
+    primer_reverse_complement_ID = pragmenters_Tm_calculation_result[1][0]
+    primer_reverse_complement = pragmenters_Tm_calculation_result[1][1]
+
+    primer_reverse_complement_last_5_base_calculation_inner_result = \
+        primer_last_5_base_calculation_inner(primer_reverse_complement_ID, primer_reverse_complement)
+
+    primer_last_5_base_calculation_result = [primer_last_5_base_calculation_inner_result,
+                                             primer_reverse_complement_last_5_base_calculation_inner_result]
+
+    """
+    primer_last_5_base_calculation_result索引方式：
+    primer_last_5_base_calculation_result[0][0][i] = primer_last_5_base_GC_count_satisfied_ID_i
+    primer_last_5_base_calculation_result[0][1][i] = primer_last_5_base_GC_count_satisfied_i
+    primer_last_5_base_calculation_result[0][2][i] = primer_last_5_base_GC_count_not_satisfied_ID_i
+    primer_last_5_base_calculation_result[0][3][i] = primer_last_5_base_GC_count_not_satisfied_i
+    primer_last_5_base_calculation_result[1][0][i] = primer_reverse_complement_last_5_base_GC_count_satisfied_ID_i
+    primer_last_5_base_calculation_result[1][1][i] = primer_reverse_complement_last_5_base_GC_count_satisfied_i
+    primer_last_5_base_calculation_result[1][2][i] = primer_reverse_complement_last_5_base_GC_count_not_satisfied_ID_i
+    primer_last_5_base_calculation_result[1][3][i] = primer_reverse_complement_last_5_base_GC_count_not_satisfied_i
+    """
+
 
     return primer_last_5_base_calculation_result
 
 def primer_poly_X_calculation(primer_last_5_base_calculation_result, max_poly_X_number = 3):
     """此函数用于检查引物连续碱基数量，在PCR过程中应尽可能避免连续相同碱基（大于4个）的出现，若出现连续碱基，可能会出现Stutter峰，会影响
     结果判读，故在引物设计过程中，应避免引物中存在的连续相同碱基，函数默认不超过3个连续碱基"""
-    primer_id = primer_last_5_base_calculation_result[0]
-    primer_seq = primer_last_5_base_calculation_result[1]
-    primer_RC_id = primer_last_5_base_calculation_result[2]
-    primer_RC_seq = primer_last_5_base_calculation_result[3]
+    def primer_poly_X_calculation_inner(primer_ID_inner, primer_inner, max_poly_X_number = 3):
+        primer_poly_X_satisfied_ID = []  # 列表用于收录连续碱基数量满足要求的引物的ID
+        primer_poly_X_satisfied = []  # 列表用于收录连续碱基数量满足要求的引物的序列
+        primer_poly_X_not_satisfied_ID = []  # 列表用于收录连续碱基数量不满足要求的引物的ID
+        primer_poly_X_not_satisfied = []  # 列表用于收录连续碱基数量不满足要求的引物的序列
 
-    # 以下为正向引物连续碱基数量判断
-    primer_id_poly_X_satisfied = []  # 列表用于收录连续碱基数量满足要求的引物的ID
-    primer_poly_X_satisfied = []  # 列表用于收录连续碱基数量满足要求的引物的序列
-    primer_id_poly_X_not_satisfied = []  # 列表用于收录连续碱基数量不满足要求的引物的ID
-    primer_poly_X_not_satisfied = []  # 列表用于收录连续碱基数量不满足要求的引物的序列
+        for ID, primer in zip(primer_ID_inner, primer_inner):
+            poly_A_count = primer.count("A" * (max_poly_X_number + 1))
+            poly_T_count = primer.count("T" * (max_poly_X_number + 1))
+            poly_C_count = primer.count("C" * (max_poly_X_number + 1))
+            poly_G_count = primer.count("G" * (max_poly_X_number + 1))
+            poly_X_count = poly_A_count + poly_T_count + poly_G_count + poly_C_count
+            if poly_X_count == 0:
+                primer_poly_X_satisfied_ID.append(ID)
+                primer_poly_X_satisfied.append(primer)
+            else:
+                primer_poly_X_not_satisfied_ID.append(str(ID) + "@poly_X_" + str(poly_X_count))
+                primer_poly_X_not_satisfied.append(primer)
 
-    for id, seq in zip(primer_id, primer_seq):
-        poly_A_count = seq.count("A" * (max_poly_X_number + 1))
-        poly_T_count = seq.count("T" * (max_poly_X_number + 1))
-        poly_C_count = seq.count("C" * (max_poly_X_number + 1))
-        poly_G_count = seq.count("G" * (max_poly_X_number + 1))
-        poly_X_count = poly_A_count + poly_T_count + poly_G_count + poly_C_count
+        primer_poly_X_calculation_inner_result = [primer_poly_X_satisfied_ID,
+                                                  primer_poly_X_satisfied,
+                                                  primer_poly_X_not_satisfied_ID,
+                                                  primer_poly_X_not_satisfied]
 
-        if poly_X_count == 0:
-            primer_id_poly_X_satisfied.append(id)
-            primer_poly_X_satisfied.append(seq)
-        else:
-            primer_id_poly_X_not_satisfied.append(id)
-            primer_poly_X_not_satisfied.append(seq)
+        return primer_poly_X_calculation_inner_result
 
-    # 以下为反向引物连续碱基数量判断
-    primer_RC_id_poly_X_satisfied = []  # 列表用于收录连续碱基数量满足要求的引物的ID
-    primer_RC_poly_X_satisfied = []  # 列表用于收录连续碱基数量满足要求的引物的序列
-    primer_RC_id_poly_X_not_satisfied = []  # 列表用于收录连续碱基数量不满足要求的引物的ID
-    primer_RC_poly_X_not_satisfied = []  # 列表用于收录连续碱基数量不满足要求的引物的序列
+    
 
-    for RC_id, RC_seq in zip(primer_RC_id, primer_RC_seq):
-        RC_poly_A_count = RC_seq.count("A" * (max_poly_X_number + 1))
-        RC_poly_T_count = RC_seq.count("T" * (max_poly_X_number + 1))
-        RC_poly_C_count = RC_seq.count("C" * (max_poly_X_number + 1))
-        RC_poly_G_count = RC_seq.count("G" * (max_poly_X_number + 1))
-        RC_poly_X_count = RC_poly_A_count + RC_poly_T_count + RC_poly_G_count + RC_poly_C_count
 
-        if RC_poly_X_count == 0:
-            primer_RC_id_poly_X_satisfied.append(RC_id)
-            primer_RC_poly_X_satisfied.append(RC_seq)
-        else:
-            primer_RC_id_poly_X_not_satisfied.append(RC_id)
-            primer_RC_poly_X_not_satisfied.append(RC_seq)
-
-    primer_poly_X_calculation_result = [primer_id_poly_X_satisfied,
-                                        primer_poly_X_satisfied,
-                                        primer_RC_id_poly_X_satisfied,
-                                        primer_RC_poly_X_satisfied,
-                                        primer_id_poly_X_not_satisfied,
-                                        primer_poly_X_not_satisfied,
-                                        primer_RC_id_poly_X_not_satisfied,
-                                        primer_RC_poly_X_not_satisfied]
 
     return primer_poly_X_calculation_result
 
@@ -436,16 +425,22 @@ file_test = sys.argv[1]
 
 j = reference_sequence_select(file_test)
 k = pragmenter(j)
-for i in range(len(k[0][0])):
-    print(str(">") + k[0][0][i])
-    print(k[0][1][i])
-for j in range(len(k[1][0])):
-    print(str(">") + k[1][0][i])
-    print(k[1][1][i])
-
-
-#l = pragmenters_Tm_calculation(k, 59, 61)
-#e = primer_last_5_base_calculation(l)
+l = pragmenters_Tm_calculation(k, 59, 61)
+e = primer_last_5_base_calculation(l)
+for i in range(len(e[0][0])):
+    print(str(">") + e[0][0][i])
+    print(e[0][1][i])
+for j in range(len(e[1][0])):
+    print(str(">") + e[1][0][j])
+    print(e[1][1][j])
+for k in range(len(e[0][2])):
+    print(str(">") + e[0][2][k])
+    print(e[0][3][k])
+for p in range(len(e[1][2])):
+    print(str(">") + e[1][2][p])
+    print(e[1][3][p])
+#
+#
 #o = primer_poly_X_calculation(e, 3)
 #q = primer_homodimer_check(o)
 #w = primer_homodimer_check_by_primer3(q)
