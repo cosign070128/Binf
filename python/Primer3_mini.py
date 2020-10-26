@@ -26,7 +26,7 @@
 #                  [result_file]   #满足设计条件的引物和产物输出文件
 #                  [primer_eliminated_list_file]   #不满足设计条件的引物输出文件
 #
-# 4.作者：cosign     时间：2020.09.30
+# 4.作者：张迪骏     时间：2020.09.30
 #-----------------------------------------------------------------------------------------------------------------------
 
 import sys
@@ -41,7 +41,7 @@ def reference_sequence_select(sequence_file):
     sequence_length = []
     sequence = []
 
-    for sequence_record in SeqIO.parse(sequence_file, "fasta"):
+    for sequence_record in SeqIO.parse(sequence_file, "fasta"):  # 将不含N碱基的序列添加进列表中，并统计长度
         if sequence_record.seq.count("N") == 0:
             sequence_ID.append(str(sequence_record.id))
             sequence_length.append(str(len(sequence_record.seq)))
@@ -53,7 +53,6 @@ def reference_sequence_select(sequence_file):
     reference_sequence_selected = {'sequence_ID': sequence_ID[sequence_length.index(sequence_min_length)],
                                    'sequence': sequence[sequence_length.index(sequence_min_length)]}
 
-    # 由于需要返回序列名称和序列碱基，故构建字典返回值
     return reference_sequence_selected
 
 def pragmenter(reference_sequence_selected):
@@ -64,18 +63,18 @@ def pragmenter(reference_sequence_selected):
         sequence_pragmenters = []
         for position in range(0, int(len(sequence))-30):
             sequence_pragmenters_ID.append(sequence_ID + "_" + str(position))
-            sequence_pragmenters.append(sequence[position:position+30])
+            sequence_pragmenters.append(sequence[position:position+30]) #将序列切割成30bp的类引物
         pragmenters_inner_result = [sequence_pragmenters_ID, sequence_pragmenters]
         return pragmenters_inner_result
 
     sequence_ID = str(reference_sequence_selected['sequence_ID'])  # 后一个sequence_ID为参考序列选择字典返回值中的键
-    sequence = str(reference_sequence_selected['sequence'])  #后一个sequence为参考序列选择字典返回值中的键
-    sequence_reverse_complement_ID = str(sequence_ID + "_RC")
-    sequence_reverse_complement = str(Seq(sequence, IUPAC.ambiguous_dna).reverse_complement())
+    sequence = str(reference_sequence_selected['sequence'])  # 后一个sequence为参考序列选择字典返回值中的键
+    sequence_reverse_complement_ID = str(sequence_ID + "_RC")  # 反向互补序列命名
+    sequence_reverse_complement = str(Seq(sequence, IUPAC.ambiguous_dna).reverse_complement()) # 反向互补序列
 
-    sequence_pragmenters_result = pragmenter_inner(sequence_ID, sequence)
+    sequence_pragmenters_result = pragmenter_inner(sequence_ID, sequence) # 正向类引物生成
     sequence_reverse_complement_pragmenters_result = pragmenter_inner(sequence_reverse_complement_ID,
-                                                                      sequence_reverse_complement)
+                                                                      sequence_reverse_complement) # 反向类引物生成
 
     pragmenters_result = [sequence_pragmenters_result, sequence_reverse_complement_pragmenters_result]
     """
@@ -100,13 +99,13 @@ def pragmenters_Tm_calculation(pragmenters_result, min_Tm = 59, max_Tm = 61):
             # 从30bp长度切到20bp长度，原因在于，如果序列大于30bp才能够达到预设最大Tm,表明序列中含有大量的AT;
             # 如果序列小于20bp就能够达到预设最小Tm,表明序列中含有大量的GC;以上两种情况均不满足引物中ATGC尽可能均匀分布的需求。
                 pragmenter_Tm = primer3.calcTm(str(pragmenter[split:]), mv_conc=50, dv_conc=3, dna_conc=200)
-                if min_Tm_inner <= pragmenter_Tm <= max_Tm_inner:
-                    sequence_pragmenters_Tm_satisfied_ID.append(str(ID) + "_" + str(30 - split) + "bp" +
-                                                                "@" + str(round(pragmenter_Tm, 2)))
+                if float(min_Tm_inner) <= float(pragmenter_Tm) <= float(max_Tm_inner):  # 判断Tm值是否在最小最大Tm值之间
+                    sequence_pragmenters_Tm_satisfied_ID.append(str(ID) + "_" + str(30 - split) + "bp@" +
+                                                                str(round(pragmenter_Tm, 2)))
                     sequence_pragmenters_Tm_satisfied.append(str(pragmenter[split:]))
                 else:
-                    sequence_pragmenters_Tm_not_satisfied_ID.append(str(ID) + "_" + str(30 - split) + "bp" +
-                                                                    "@" + str(round(pragmenter_Tm, 2)))
+                    sequence_pragmenters_Tm_not_satisfied_ID.append(str(ID) + "_" + str(30 - split) + "bp@" +
+                                                                    str(round(pragmenter_Tm, 2)))
                     sequence_pragmenters_Tm_not_satisfied.append(str(pragmenter[split:]))
 
         pragmenters_Tm_calculation_inner_result = [sequence_pragmenters_Tm_satisfied_ID,
@@ -122,7 +121,7 @@ def pragmenters_Tm_calculation(pragmenters_result, min_Tm = 59, max_Tm = 61):
     sequence_pragmenters_Tm_calculation = \
         pragmenters_Tm_calculation_inner(sequence_pragments_ID,
                                          sequence_pragments,
-                                         min_Tm, max_Tm)
+                                         min_Tm, max_Tm) #正向类引物判断
 
     sequence_reverse_complement_pragmenters_ID = pragmenters_result[1][0]
     sequence_reverse_complement_pragmenters = pragmenters_result[1][1]
@@ -130,7 +129,7 @@ def pragmenters_Tm_calculation(pragmenters_result, min_Tm = 59, max_Tm = 61):
     sequence_reverse_complement_pragmenters_Tm_calculation = \
         pragmenters_Tm_calculation_inner(sequence_reverse_complement_pragmenters_ID,
                                          sequence_reverse_complement_pragmenters,
-                                         min_Tm, max_Tm)
+                                         min_Tm, max_Tm) #反向类引物判断
 
     pragmenters_Tm_calculation_result = [sequence_pragmenters_Tm_calculation,
                                          sequence_reverse_complement_pragmenters_Tm_calculation]
@@ -159,7 +158,7 @@ def primer_last_5_base_calculation(pragmenters_Tm_calculation_result):
         primer_last_5_base_GC_count_not_satisfied = []
 
         for ID, primer in zip(primer_ID_inner, primers_inner):
-            primer_last_5_base = str(primer[-5:])
+            primer_last_5_base = str(primer[-5:]) # 切出引物最后5个碱基
             GC_count = primer_last_5_base.count("G") + primer_last_5_base.count("C")
             if 1 <= GC_count <= 3:
                 primer_last_5_base_GC_count_satisfied_ID.append(ID)
@@ -179,13 +178,13 @@ def primer_last_5_base_calculation(pragmenters_Tm_calculation_result):
     primer = pragmenters_Tm_calculation_result[0][1]
 
     primer_last_5_base_calculation_inner_result = \
-        primer_last_5_base_calculation_inner(primer_ID, primer)
+        primer_last_5_base_calculation_inner(primer_ID, primer) # 正向引物判断
 
     primer_reverse_complement_ID = pragmenters_Tm_calculation_result[1][0]
     primer_reverse_complement = pragmenters_Tm_calculation_result[1][1]
 
     primer_reverse_complement_last_5_base_calculation_inner_result = \
-        primer_last_5_base_calculation_inner(primer_reverse_complement_ID, primer_reverse_complement)
+        primer_last_5_base_calculation_inner(primer_reverse_complement_ID, primer_reverse_complement) # 反向引物判断
 
     primer_last_5_base_calculation_result = [primer_last_5_base_calculation_inner_result,
                                              primer_reverse_complement_last_5_base_calculation_inner_result]
@@ -215,11 +214,12 @@ def primer_poly_X_calculation(primer_last_5_base_calculation_result, max_poly_X_
         primer_poly_X_not_satisfied = []
 
         for ID, primer in zip(primer_ID_inner, primer_inner):
+            # 统计poly_X总的个数
             poly_A_count = primer.count("A" * (max_poly_X_number + 1))
             poly_T_count = primer.count("T" * (max_poly_X_number + 1))
             poly_C_count = primer.count("C" * (max_poly_X_number + 1))
             poly_G_count = primer.count("G" * (max_poly_X_number + 1))
-            poly_X_count = poly_A_count + poly_T_count + poly_G_count + poly_C_count
+            poly_X_count = poly_A_count + poly_T_count + poly_G_count + poly_C_count 
             if poly_X_count == 0:
                 primer_poly_X_satisfied_ID.append(ID)
                 primer_poly_X_satisfied.append(primer)
@@ -238,13 +238,13 @@ def primer_poly_X_calculation(primer_last_5_base_calculation_result, max_poly_X_
     primer = primer_last_5_base_calculation_result[0][1]
 
     primer_poly_X_calculation_inner_result = \
-        primer_poly_X_calculation_inner(primer_ID, primer)
+        primer_poly_X_calculation_inner(primer_ID, primer) # 正向引物判断
 
     primer_reverse_complement_ID = primer_last_5_base_calculation_result[1][0]
     primer_reverse_complement = primer_last_5_base_calculation_result[1][1]
 
     primer_reverse_complement_poly_X_calculation_inner_result = \
-        primer_poly_X_calculation_inner(primer_reverse_complement_ID, primer_reverse_complement)
+        primer_poly_X_calculation_inner(primer_reverse_complement_ID, primer_reverse_complement) # 反向引物判断
 
     primer_poly_X_calculation_result = [primer_poly_X_calculation_inner_result,
                                         primer_reverse_complement_poly_X_calculation_inner_result]
@@ -264,9 +264,9 @@ def primer_poly_X_calculation(primer_last_5_base_calculation_result, max_poly_X_
 
 def primer_homodimer_check(primer_poly_X_calclation_result):
     """此函数用于自身二聚体检查（严格模式），主要筛查全匹配可双向延伸类型自身引物二聚体，即自身3端序列为回文序列
-    例如：5‘-nnnnnnnnnATGCGCAT-3'
-                     ||||||||
-                  3'-TACGCGTAnnnnnnnnn-5'
+    例如：5'-nnnnnnnnnATGCGCAT-3'
+                      ||||||||
+                   3'-TACGCGTAnnnnnnnnn-5'
     检查通过序列本身是否等于序列本身反向互补进行判断"""
     def primer_homodimer_check_inner(primer_ID, primer):
         primer_homodimer_satisfied_ID = []
@@ -275,14 +275,14 @@ def primer_homodimer_check(primer_poly_X_calclation_result):
         primer_homodimer_not_satisfied = []
 
         for ID, seq in zip(primer_ID, primer):
-            time = 0
-            for split_length in range(4, len(seq) + 1, 2):
-                primer_sub_seq = str(seq[-split_length:]).strip()
-                primer_sub_seq_RC = str(Seq(primer_sub_seq, IUPAC.ambiguous_dna).reverse_complement()).strip()
+            time = 0 #统计homodimer次数
+            for split_length in range(4, len(seq) + 1, 2): # length+1为确保引物全长在双数是被全长被取到，从3端4个碱基开始计算
+                primer_sub_seq = str(seq[-split_length:])
+                primer_sub_seq_RC = str(Seq(primer_sub_seq, IUPAC.ambiguous_dna).reverse_complement())
                 primer_sub_seq_AT_count = primer_sub_seq.count("A") + primer_sub_seq.count("T")
                 if primer_sub_seq == primer_sub_seq_RC:
                     if int(len(primer_sub_seq)) == int(primer_sub_seq_AT_count) == 4:
-                        continue
+                        continue #如果homodimer为4个碱基且均为AT，其结合能力较差，故接受此种情况
                     else:
                         primer_homodimer_not_satisfied_ID.append(str(ID) + "@HoD_" + str(split_length))
                         primer_homodimer_not_satisfied.append(str(seq))
@@ -302,13 +302,13 @@ def primer_homodimer_check(primer_poly_X_calclation_result):
     primer = primer_poly_X_calclation_result[0][1]
 
     primer_homodimer_check_inner_result = \
-        primer_homodimer_check_inner(primer_ID, primer)
+        primer_homodimer_check_inner(primer_ID, primer) # 正向引物判断
 
     primer_reverse_complement_ID = primer_poly_X_calclation_result[1][0]
     primer_reverse_complement = primer_poly_X_calclation_result[1][1]
 
     primer_reverse_complement_homodimer_check_inner_result = \
-        primer_homodimer_check_inner(primer_reverse_complement_ID, primer_reverse_complement)
+        primer_homodimer_check_inner(primer_reverse_complement_ID, primer_reverse_complement) # 反向引物判断
 
     primer_homodimer_check_result = [primer_homodimer_check_inner_result,
                                      primer_reverse_complement_homodimer_check_inner_result]
@@ -330,8 +330,8 @@ def primer_homodimer_check_by_primer3(primer_poly_X_calclation_result, Tm = 47):
     """此函数用于自身二聚体检查（primer3.py模式），通过热力学计算方式检查自身二聚体，在参数上较严格模式宽松，会杀掉一些非可延伸的二聚体，
     目前对于这些非可延伸的二聚体，手动操作过程中采取保留的方式。这项检查可以与严格模式相互补充。
     例如：    5‘-CCAGAGCTTAAGCTCTTTAGAAAT-3’
-                  ||||||||||||||
-        3‘-TAAAGATTCTCGAATTCGAGACC-5’
+                   ||||||||||||||
+         3‘-TAAAGATTCTCGAATTCGAGACC-5’
     默认二聚体Tm值需低于47摄氏度。"""
     def primer_homodimer_check_by_primer3_inner(primer_ID, primers, Tm):
         primer_homodimer_satisfied_ID = []
@@ -340,8 +340,8 @@ def primer_homodimer_check_by_primer3(primer_poly_X_calclation_result, Tm = 47):
         primer_homodimer_not_satisfied = []
 
         for ID, primer in zip(primer_ID, primers):
-            homodimer = primer3.calcHomodimer((str(primer)), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25)
-            homodimer_Tm = str(homodimer).split('tm=')[1].split(',')[0]
+            homodimer = primer3.calcHomodimer((str(primer)), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25) # homodimer检查
+            homodimer_Tm = str(homodimer).split('tm=')[1].split(',')[0] # Tm值提取
             if float(homodimer_Tm) <= float(Tm):
                 primer_homodimer_satisfied_ID.append(ID)
                 primer_homodimer_satisfied.append(primer)
@@ -360,13 +360,13 @@ def primer_homodimer_check_by_primer3(primer_poly_X_calclation_result, Tm = 47):
     primer = primer_poly_X_calclation_result[0][1]
 
     primer_homodimer_check_by_primer3_inner_result = \
-        primer_homodimer_check_by_primer3_inner(primer_ID, primer, Tm)
+        primer_homodimer_check_by_primer3_inner(primer_ID, primer, Tm) # 正向引物判断
 
     primer_reverse_complement_ID = primer_poly_X_calclation_result[1][0]
     primer_reverse_complement = primer_poly_X_calclation_result[1][1]
 
     primer_reverse_complement_homodimer_check_by_primer3_inner_result = \
-        primer_homodimer_check_by_primer3_inner(primer_reverse_complement_ID, primer_reverse_complement, Tm)
+        primer_homodimer_check_by_primer3_inner(primer_reverse_complement_ID, primer_reverse_complement, Tm) # 反向引物判断
 
     primer_homodimer_check_by_primer3_result = [primer_homodimer_check_by_primer3_inner_result,
                                                 primer_reverse_complement_homodimer_check_by_primer3_inner_result]
@@ -393,7 +393,7 @@ def primer_hairpin_check_by_primer3(primer_homodimer_check_result, Tm = 47):
         primer_hairpin_not_satisfied = []
 
         for ID, primer in zip(primers_ID, primers):
-            hairpin = primer3.calcHairpin(str(primer), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25)
+            hairpin = primer3.calcHairpin(str(primer), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25 # 发夹结构检查
             if float(hairpin.tm) <= float(Tm):
                 primer_hairpin_satisfied_ID.append(str(ID))
                 primer_hairpin_satisfied.append(str(primer))
@@ -412,13 +412,13 @@ def primer_hairpin_check_by_primer3(primer_homodimer_check_result, Tm = 47):
     primer = primer_homodimer_check_result[0][1]
 
     primer_hairpin_check_by_primer3_inner_result = \
-        primer_hairpin_check_by_primer3_inner(primer_ID, primer, Tm)
+        primer_hairpin_check_by_primer3_inner(primer_ID, primer, Tm) # 正向引物筛选
 
     primer_reverse_complement_ID = primer_homodimer_check_result[1][0]
     primer_reverse_complement = primer_homodimer_check_result[1][1]
 
     primer_reverse_complement_hairpin_check_by_primer3_inner_result = \
-        primer_hairpin_check_by_primer3_inner(primer_reverse_complement_ID, primer_reverse_complement, Tm)
+        primer_hairpin_check_by_primer3_inner(primer_reverse_complement_ID, primer_reverse_complement, Tm) # 反向引物筛选
 
     primer_hairpin_check_by_primer3_result = [primer_hairpin_check_by_primer3_inner_result,
                                               primer_reverse_complement_hairpin_check_by_primer3_inner_result]
@@ -443,12 +443,13 @@ def primer_pairing(primer_list, reference_sequence, min_amplicon_length, max_amp
         primer_ID = []
         primer = []
         primer_position = []
+       
         for ID, primer_seq in zip(primers_ID, primers_list):
             primer_ID.append(str(ID))
             primer.append(str(primer_seq))
-            if str(primer_direction) == str("forward"):
+            if str(primer_direction) == str("forward"): # 正向引物位置索引
                 primer_position.append(int(reference_sequence.find(primer_seq)))
-            if str(primer_direction) == str("reverse"):
+            if str(primer_direction) == str("reverse"): # 反向引物位置索引
                 primer_seq_RC = str(Seq(primer_seq, IUPAC.ambiguous_dna).reverse_complement())
                 primer_position.append(int(reference_sequence.find(primer_seq_RC) + len(primer_seq_RC)))
 
@@ -461,13 +462,13 @@ def primer_pairing(primer_list, reference_sequence, min_amplicon_length, max_amp
     ref_seq = str(reference_sequence['sequence'])
 
     primer_position_index_result = \
-        primer_position_index(primer_ID, primer, ref_seq, "forward")
+        primer_position_index(primer_ID, primer, ref_seq, "forward") # 正向引物位置索引
 
     primer_reverse_complement_ID = primer_list[1][0]
     primer_reverse_complement = primer_list[1][1]
 
     primer_reverse_complement_position_index_result = \
-        primer_position_index(primer_reverse_complement_ID, primer_reverse_complement, ref_seq, "reverse")
+        primer_position_index(primer_reverse_complement_ID, primer_reverse_complement, ref_seq, "reverse") # 反向引物位置索引
 
     def primer_pairing_inner(primer_position_index_result, primer_reverse_complement_position_index_result,
                              min_amplicon_length, max_amplicon_length, reference_sequence, Tm = 47):
@@ -482,14 +483,15 @@ def primer_pairing(primer_list, reference_sequence, min_amplicon_length, max_amp
                 primer_position_index_result[0],
                 primer_position_index_result[1],
                 primer_position_index_result[2]
-        ):
+        ): # 正向引物信息提取
             for reverse_complement_ID, reverse_complement_primer_seq, reverse_complement_position in zip(
                 primer_reverse_complement_position_index_result[0],
                 primer_reverse_complement_position_index_result[1],
                 primer_reverse_complement_position_index_result[2]
-            ):
-                amplicon_length = int(reverse_complement_position) - int(position)
+            ): # 反向引物信息提取
+                amplicon_length = int(reverse_complement_position) - int(position) # 产物长度计算
                 if min_amplicon_length <= amplicon_length <= max_amplicon_length:
+                    # 在产物长度满足限制条件时，检查正反向引物相互作用
                     heterodimer = primer3.calcHeterodimer(
                         primer_seq, reverse_complement_primer_seq, mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25)
                     heterodimer_Tm = str(heterodimer).split('tm=')[1].split(',')[0]
@@ -533,4 +535,6 @@ r = primer_pairing(e, j, 190, 200)
 for i in range(len(r[0])):
     print(str(r[0][i]) + "\t" + str(r[1][i]) + "\t" + str(r[2][i]) + "\t" +
           str(r[3][i]) + "\t" + str(r[4][i]) + "\t" + str(r[5][i]))
-          
+
+
+
