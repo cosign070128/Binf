@@ -14,17 +14,17 @@
 #    2.6.2 对满足上述条件的引物进行自身二聚体判断，采用primer3.py—calcHomodimer计算，对应函数primer_homodimer_check_by_primer3;
 #    2.7.  对满足上述条件的引物进行发夹结构判断，对应函数primer_hairpin_check_by_primer3；
 #    2.8.  对通过检查的引物进行位置索引,并输出满足产物长度且通过相互作用检查的配对引物，对应函数primer_pairing；
-#    2.9.  输出所有满足要求的配对引物以及产物（产物序列中大写表示引物位置，小写表示扩增序列）。
+#    2.9.  输出所有满足要求的配对引物以及产物。
 #
 # 3.程序使用方法：
 #    python Primer3_mini.py 
 #                  [sequence.fasta]   #包含所有序列的FASTA文件
 #                  [min_Tm-max_Tm]   #引物Tm值范围
 #                  [max_poly_X]   #最大连续碱基个数
-#                  [Tm]   #热力学检查Tm值
+#                  [thermodynamic_Tm]   #热力学检查Tm值
 #                  [min_amplicon_length-max_amplicon_length]   #产物长度
 #                  [result_file]   #满足设计条件的引物和产物输出文件
-#                  [primer_eliminated_list_file]   #不满足设计条件的引物输出文件
+#                  [primer_eliminated_list_file]   #不满足设计条件的引物输出文件,暂不输出,留有接口
 #
 # 4.作者：张迪骏     时间：2020.09.30
 #-----------------------------------------------------------------------------------------------------------------------
@@ -215,10 +215,10 @@ def primer_poly_X_calculation(primer_last_5_base_calculation_result, max_poly_X_
 
         for ID, primer in zip(primer_ID_inner, primer_inner):
             # 统计poly_X总的个数
-            poly_A_count = primer.count("A" * (max_poly_X_number + 1))
-            poly_T_count = primer.count("T" * (max_poly_X_number + 1))
-            poly_C_count = primer.count("C" * (max_poly_X_number + 1))
-            poly_G_count = primer.count("G" * (max_poly_X_number + 1))
+            poly_A_count = primer.count("A" * (int(max_poly_X_number) + 1))
+            poly_T_count = primer.count("T" * (int(max_poly_X_number) + 1))
+            poly_C_count = primer.count("C" * (int(max_poly_X_number) + 1))
+            poly_G_count = primer.count("G" * (int(max_poly_X_number) + 1))
             poly_X_count = poly_A_count + poly_T_count + poly_G_count + poly_C_count 
             if poly_X_count == 0:
                 primer_poly_X_satisfied_ID.append(ID)
@@ -329,9 +329,9 @@ def primer_homodimer_check(primer_poly_X_calclation_result):
 def primer_homodimer_check_by_primer3(primer_poly_X_calclation_result, Tm = 47):
     """此函数用于自身二聚体检查（primer3.py模式），通过热力学计算方式检查自身二聚体，在参数上较严格模式宽松，会杀掉一些非可延伸的二聚体，
     目前对于这些非可延伸的二聚体，手动操作过程中采取保留的方式。这项检查可以与严格模式相互补充。
-    例如：    5‘-CCAGAGCTTAAGCTCTTTAGAAAT-3’
-                   ||||||||||||||
-         3‘-TAAAGATTCTCGAATTCGAGACC-5’
+    例如：      5‘-nnAGAGCTTAAGCTCTnnnnnnnn-3’
+                    ||||||||||||||
+         3‘-nnnnnnnnTCTCGAATTCGAGAnn-5’
     默认二聚体Tm值需低于47摄氏度。"""
     def primer_homodimer_check_by_primer3_inner(primer_ID, primers, Tm):
         primer_homodimer_satisfied_ID = []
@@ -340,7 +340,8 @@ def primer_homodimer_check_by_primer3(primer_poly_X_calclation_result, Tm = 47):
         primer_homodimer_not_satisfied = []
 
         for ID, primer in zip(primer_ID, primers):
-            homodimer = primer3.calcHomodimer((str(primer)), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25) # homodimer检查
+            # homodimer检查与Tm计算
+            homodimer = primer3.calcHomodimer((str(primer)), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25)
             homodimer_Tm = str(homodimer).split('tm=')[1].split(',')[0] # Tm值提取
             if float(homodimer_Tm) <= float(Tm):
                 primer_homodimer_satisfied_ID.append(ID)
@@ -393,7 +394,7 @@ def primer_hairpin_check_by_primer3(primer_homodimer_check_result, Tm = 47):
         primer_hairpin_not_satisfied = []
 
         for ID, primer in zip(primers_ID, primers):
-            hairpin = primer3.calcHairpin(str(primer), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25 # 发夹结构检查
+            hairpin = primer3.calcHairpin(str(primer), mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25) # 发夹结构检查
             if float(hairpin.tm) <= float(Tm):
                 primer_hairpin_satisfied_ID.append(str(ID))
                 primer_hairpin_satisfied.append(str(primer))
@@ -490,7 +491,7 @@ def primer_pairing(primer_list, reference_sequence, min_amplicon_length, max_amp
                 primer_reverse_complement_position_index_result[2]
             ): # 反向引物信息提取
                 amplicon_length = int(reverse_complement_position) - int(position) # 产物长度计算
-                if min_amplicon_length <= amplicon_length <= max_amplicon_length:
+                if int(min_amplicon_length) <= amplicon_length <= int(max_amplicon_length):
                     # 在产物长度满足限制条件时，检查正反向引物相互作用
                     heterodimer = primer3.calcHeterodimer(
                         primer_seq, reverse_complement_primer_seq, mv_conc=50.0, dv_conc=3, dna_conc=200, temp_c=25)
@@ -509,7 +510,6 @@ def primer_pairing(primer_list, reference_sequence, min_amplicon_length, max_amp
 
         return primer_pairing_inner_result
 
-
     primer_pairing_result = primer_pairing_inner(primer_position_index_result,
                                                  primer_reverse_complement_position_index_result,
                                                  min_amplicon_length, max_amplicon_length,
@@ -517,24 +517,69 @@ def primer_pairing(primer_list, reference_sequence, min_amplicon_length, max_amp
 
     return primer_pairing_result
 
-
 #-----------------------------------------------------------------------------------------------------------------------
 
-file_test = sys.argv[1]
+if __name__ == "__main__":
 
-j = reference_sequence_select(file_test)
-k = pragmenter(j)
-l = pragmenters_Tm_calculation(k, 59, 61)
-e = primer_last_5_base_calculation(l)
-o = primer_poly_X_calculation(e, 3)
-q = primer_homodimer_check(o)
-w = primer_homodimer_check_by_primer3(q)
-e = primer_hairpin_check_by_primer3(w)
-r = primer_pairing(e, j, 190, 200)
+    if len(sys.argv) != 7:
+        print("Primer3_mini.py Usage:")
+        print("python Primer3_mini.py")
+        print("                  [sequence.fasta]  包含所有序列的FASTA文件")
+        print("                  [min_Tm-max_Tm]   引物Tm值范围")
+        print("                  [max_poly_X]   最大连续碱基个数")
+        print("                  [thermodynamic_Tm]   热力学检查Tm值")
+        print("                  [min_amplicon_length-max_amplicon_length]   产物长度")
+        print("                  [result_file]   满足设计条件的引物和产物输出文件")
+        sys.exit()
 
-for i in range(len(r[0])):
-    print(str(r[0][i]) + "\t" + str(r[1][i]) + "\t" + str(r[2][i]) + "\t" +
-          str(r[3][i]) + "\t" + str(r[4][i]) + "\t" + str(r[5][i]))
+    file_input = sys.argv[1]
+    min_Tm = sys.argv[2].split("-")[0]
+    max_Tm = sys.argv[2].split("-")[1]
+    max_poly_X = sys.argv[3]
+    thermodynamic_Tm = sys.argv[4]
+    min_amplicon_legnth = sys.argv[5].split("-")[0]
+    max_amplicon_length = sys.argv[5].split("-")[1]
+    result_file_output = sys.argv[6]
+    #primer_eliminated_list_file = sys.argv[7]
 
+    #参考序列选择（2.1）
+    reference_sequence_select_result = reference_sequence_select(file_input)
+    #类引物切割（2.2）
+    pragmenter_result = pragmenter(reference_sequence_select_result)
+    #类引物Tm值计算（2.3）
+    pragmenters_Tm_calculation_result = pragmenters_Tm_calculation(pragmenter_result, min_Tm, max_Tm)
+    #引物最后5个碱基GC碱基数量判断（2.4）
+    primer_last_5_base_calculation_result = primer_last_5_base_calculation(pragmenters_Tm_calculation_result)
+    #引物连续碱基判断（2.5）
+    primer_poly_X_calculation_result = primer_poly_X_calculation(primer_last_5_base_calculation_result, max_poly_X)
+    #引物自身二聚体判断（方式1）（2.6.1）
+    primer_homodimer_check_result = primer_homodimer_check(primer_poly_X_calculation_result)
+    #引物自身二聚体判断（方式2）（2.6.2）
+    primer_homodimer_check_by_primer3_result = primer_homodimer_check_by_primer3(primer_homodimer_check_result,
+                                                                                 thermodynamic_Tm)
+    #引物发夹结构判断（2.7）
+    primer_hairpin_check_by_primer3_result = primer_hairpin_check_by_primer3(primer_homodimer_check_by_primer3_result,
+                                                                             thermodynamic_Tm)
+    #引物配对/产物长度计算/配对引物间相互作用检查（2.8）
+    primer_pairing_result = primer_pairing(primer_hairpin_check_by_primer3_result, reference_sequence_select_result,
+                                           min_amplicon_legnth, max_amplicon_length, thermodynamic_Tm)
 
+    #输出全部满足条件的引物和产物
+    result = open(result_file_output, 'w')
+    result.write("F_primer_ID" + "\t" + "F_primer_seq" + "\t" +
+                 "R_primer_ID" + "\t" + "R_primer_seq" + "\t" +
+                 "amplicon_sequence" + "\t" + "amplicon_length" + "\n")
 
+    for i in range(len(primer_pairing_result[0])):
+        F_primer_ID = primer_pairing_result[0][i]
+        F_primer_seq = primer_pairing_result[1][i]
+        R_primer_ID = primer_pairing_result[2][i]
+        R_primer_seq = primer_pairing_result[3][i]
+        amplicon_sequence = primer_pairing_result[4][i]
+        amplicon_length = primer_pairing_result[5][i]
+
+        result.write(F_primer_ID + "\t" + F_primer_seq + "\t" +
+                     R_primer_ID + "\t" + R_primer_seq + "\t" +
+                     amplicon_sequence + "\t" + amplicon_length + "\n")
+
+    result.close()
